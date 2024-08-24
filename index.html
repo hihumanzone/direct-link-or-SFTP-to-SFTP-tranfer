@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SFTP File Transfer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+
+    form {
+      margin-bottom: 20px;
+    }
+
+    #console {
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 150px;
+      overflow-y: scroll;
+    }
+
+    .form-field {
+      margin-bottom: 10px;
+    }
+
+    .file-transfer-type {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>SFTP File Transfer</h1>
+  <section>
+    <h2>File Transfer</h2>
+    <div class="file-transfer-type">
+      <input type="radio" id="transferFromUrl" name="transferType" value="transferFromUrl" checked />
+      <label for="transferFromUrl">Transfer from URL to SFTP</label>
+      <input type="radio" id="transferSftpToSftp" name="transferType" value="transferSftpToSftp" />
+      <label for="transferSftpToSftp">Transfer SFTP to SFTP</label>
+    </div>
+    <form id="transferForm">
+      <div id="urlToSftpFields">
+        <div class="form-field">
+          <label for="sftpHost">SFTP Host</label>
+          <input type="text" id="sftpHost" name="sftpHost" />
+        </div>
+        <div class="form-field">
+          <label for="sftpPort">SFTP Port</label>
+          <input type="number" id="sftpPort" name="sftpPort" value="2022" />
+        </div>
+        <div class="form-field">
+          <label for="sftpUsername">Username</label>
+          <input type="text" id="sftpUsername" name="sftpUsername" />
+        </div>
+        <div class="form-field">
+          <label for="sftpPassword">Password</label>
+          <input type="password" id="sftpPassword" name="sftpPassword" />
+        </div>
+        <div class="form-field">
+          <label for="fileUrl">File URL</label>
+          <input type="url" id="fileUrl" name="fileUrl" />
+        </div>
+        <div class="form-field">
+          <label for="remotePath">Optional Remote Path</label>
+          <input type="text" id="remotePath" name="remotePath" placeholder="e.g., /path/to/folder" />
+        </div>
+      </div>
+      <div id="sftpToSftpFields" style="display: none;">
+        <h3>Source SFTP</h3>
+        <div class="form-field">
+          <label for="sourceSftpHost">Source SFTP Host</label>
+          <input type="text" id="sourceSftpHost" name="sourceSftpHost" />
+        </div>
+        <div class="form-field">
+          <label for="sourceSftpPort">Source SFTP Port</label>
+          <input type="number" id="sourceSftpPort" name="sourceSftpPort" value="2022" />
+        </div>
+        <div class="form-field">
+          <label for="sourceSftpUsername">Source Username</label>
+          <input type="text" id="sourceSftpUsername" name="sourceSftpUsername" />
+        </div>
+        <div class="form-field">
+          <label for="sourceSftpPassword">Source Password</label>
+          <input type="password" id="sourceSftpPassword" name="sourceSftpPassword" />
+        </div>
+        <div class="form-field">
+          <label for="sourceFilePath">Source File Path</label>
+          <input type="text" id="sourceFilePath" name="sourceFilePath" placeholder="e.g., /path/to/file.zip" />
+        </div>
+        <h3>Destination SFTP</h3>
+        <div class="form-field">
+          <label for="destinationSftpHost">Destination SFTP Host</label>
+          <input type="text" id="destinationSftpHost" name="destinationSftpHost" />
+        </div>
+        <div class="form-field">
+          <label for="destinationSftpPort">Destination SFTP Port</label>
+          <input type="number" id="destinationSftpPort" name="destinationSftpPort" value="2022" />
+        </div>
+        <div class="form-field">
+          <label for="destinationSftpUsername">Destination Username</label>
+          <input type="text" id="destinationSftpUsername" name="destinationSftpUsername" />
+        </div>
+        <div class="form-field">
+          <label for="destinationSftpPassword">Destination Password</label>
+          <input type="password" id="destinationSftpPassword" name="destinationSftpPassword" />
+        </div>
+        <div class="form-field">
+          <label for="destinationPath">Optional Destination Path</label>
+          <input type="text" id="destinationPath" name="destinationPath" placeholder="e.g., /path/to/folder" />
+        </div>
+      </div>
+      <button type="submit">Start Transfer</button>
+    </form>
+  </section>
+  <h2>Console</h2>
+  <div id="console"></div>
+
+  <script>
+    const uuidv4 = () => {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0,
+          v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    };
+
+    const consoleDiv = document.getElementById('console');
+    let clientId = uuidv4();
+
+    const addConsoleMessage = (message) => {
+      const p = document.createElement('p');
+      p.textContent = message;
+      consoleDiv.appendChild(p);
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    };
+
+    const eventSource = new EventSource(`/events?clientId=${encodeURIComponent(clientId)}`);
+
+    eventSource.onmessage = (event) => {
+      const messageData = JSON.parse(event.data);
+      addConsoleMessage(messageData.message);
+    };
+
+    const updateFormForTransferType = () => {
+      const transferType = document.querySelector('input[name="transferType"]:checked').value;
+      const urlToSftpFields = document.getElementById('urlToSftpFields');
+      const sftpToSftpFields = document.getElementById('sftpToSftpFields');
+
+      if (transferType === 'transferFromUrl') {
+        urlToSftpFields.style.display = 'block';
+        sftpToSftpFields.style.display = 'none';
+      } else {
+        urlToSftpFields.style.display = 'none';
+        sftpToSftpFields.style.display = 'block';
+      }
+    };
+
+    const saveFormData = (transferType, formData) => {
+      localStorage.setItem('transferType', transferType);
+      localStorage.setItem('formData', JSON.stringify(formData));
+    };
+
+    const loadFormData = () => {
+      const savedTransferType = localStorage.getItem('transferType');
+      const savedFormData = JSON.parse(localStorage.getItem('formData'));
+
+      if (savedTransferType) {
+        document.querySelector(`input[name="transferType"][value="${savedTransferType}"]`).checked = true;
+        updateFormForTransferType();
+      }
+
+      if (savedFormData) {
+        for (const [key, value] of Object.entries(savedFormData)) {
+          const inputElement = document.querySelector(`[name="${key}"]`);
+          if (inputElement) {
+            inputElement.value = value;
+          }
+        }
+      }
+    };
+
+    const transferForm = document.getElementById('transferForm');
+    transferForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const transferType = document.querySelector('input[name="transferType"]:checked').value;
+      const formData = new FormData(transferForm);
+
+      saveFormData(transferType, Object.fromEntries(formData));
+
+      if (transferType === 'transferFromUrl') {
+        const sftpHost = formData.get('sftpHost');
+        const sftpPort = formData.get('sftpPort');
+        const sftpUsername = formData.get('sftpUsername');
+        const sftpPassword = formData.get('sftpPassword');
+        const fileUrl = formData.get('fileUrl');
+        const remotePath = formData.get('remotePath') || '/';
+
+        const response = await fetch(`/transfer?clientId=${encodeURIComponent(clientId)}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sftpHost,
+            sftpPort,
+            sftpUsername,
+            sftpPassword,
+            fileUrl,
+            remotePath
+          })
+        });
+        const result = await response.json();
+        addConsoleMessage(result.message);
+      } else if (transferType === 'transferSftpToSftp') {
+        const sourceSftpHost = formData.get('sourceSftpHost');
+        const sourceSftpPort = formData.get('sourceSftpPort');
+        const sourceSftpUsername = formData.get('sourceSftpUsername');
+        const sourceSftpPassword = formData.get('sourceSftpPassword');
+        const sourceFilePath = formData.get('sourceFilePath');
+
+        const destinationSftpHost = formData.get('destinationSftpHost');
+        const destinationSftpPort = formData.get('destinationSftpPort');
+        const destinationSftpUsername = formData.get('destinationSftpUsername');
+        const destinationSftpPassword = formData.get('destinationSftpPassword');
+        const destinationPath = formData.get('destinationPath') || '/';
+
+        const response = await fetch(`/transfer-sftp-to-sftp?clientId=${encodeURIComponent(clientId)}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sourceSftpHost,
+            sourceSftpPort,
+            sourceSftpUsername,
+            sourceSftpPassword,
+            sourceFilePath,
+            destinationSftpHost,
+            destinationSftpPort,
+            destinationSftpUsername,
+            destinationSftpPassword,
+            destinationPath
+          })
+        });
+        const result = await response.json();
+        addConsoleMessage(result.message);
+      }
+    });
+
+    document.querySelectorAll('input[name="transferType"]').forEach(input => {
+      input.addEventListener('change', updateFormForTransferType);
+    });
+
+    window.addEventListener('load', loadFormData);
+  </script>
+</body>
+
+</html>

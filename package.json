@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "express": "*",
+    "multer": "*",
+    "ssh2-sftp-client": "*",
+    "uuid": "*",
+    "axios": "*",
+    "content-disposition": "*"
+  }
+}
